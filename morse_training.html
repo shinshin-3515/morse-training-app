@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>International Morse Trainer v3 (Beginner)</title>
+  <style>
+    :root {
+      --bg:#0b1220; --panel:#111b2e; --text:#e9eefc; --muted:#a9b4d0;
+      --accent:#7aa7ff; --ok:#39d98a; --ng:#ff5d5d; --warn:#ffd166;
+    }
+    body{ margin:0; font-family: system-ui, -apple-system, Segoe UI, Roboto, "Hiragino Kaku Gothic ProN", Meiryo, sans-serif;
+      background:linear-gradient(180deg,#071022, #0b1220 40%, #060b15); color:var(--text);}
+    .wrap{ max-width:1000px; margin:0 auto; padding:18px; }
+    h1{ font-size:20px; margin:6px 0 14px; font-weight:700;}
+    .tabs{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px;}
+    .tab{ background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.12); color:var(--text);
+      padding:10px 12px; border-radius:10px; cursor:pointer; user-select:none; }
+    .tab.active{ outline:2px solid rgba(122,167,255,.45); border-color:rgba(122,167,255,.45); background:rgba(122,167,255,.12); }
+    .grid{ display:grid; grid-template-columns: 1.25fr .75fr; gap:12px; }
+    @media (max-width: 880px){ .grid{ grid-template-columns:1fr; } }
+    .card{ background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.12); border-radius:14px; padding:14px; }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    label{ color:var(--muted); font-size:12px;}
+    select, input, button, textarea{
+      background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14);
+      color:var(--text); border-radius:10px; padding:10px 12px; font-size:14px;
+    }
+    textarea{ width:100%; min-height:92px; resize:vertical; }
+    button{ cursor:pointer; }
+    button.primary{ background:rgba(122,167,255,.18); border-color:rgba(122,167,255,.35); }
+    button:disabled{ opacity:.5; cursor:not-allowed; }
+    .big{ font-size:42px; letter-spacing:2px; font-weight:800; margin:6px 0;}
+    .morse{ font-size:26px; letter-spacing:4px; font-weight:700; margin:6px 0; }
+    .hint{ color:var(--muted); font-size:12px; line-height:1.6; }
+    .stat{ display:grid; grid-template-columns: 1fr 1fr; gap:10px; margin-top:10px;}
+    .stat .box{ background:rgba(0,0,0,.18); border:1px solid rgba(255,255,255,.10); border-radius:12px; padding:10px; }
+    .box .k{ color:var(--muted); font-size:12px; }
+    .box .v{ font-size:18px; font-weight:700; margin-top:4px;}
+    .choices{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px; }
+    @media (max-width: 520px){ .choices{ grid-template-columns:1fr; } }
+    .choice{ text-align:left; padding:12px; border-radius:12px; }
+    .choice.correct{ border-color:rgba(57,217,138,.7); background:rgba(57,217,138,.10); }
+    .choice.wrong{ border-color:rgba(255,93,93,.75); background:rgba(255,93,93,.10); }
+    .msg{ margin-top:8px; min-height:22px; font-weight:800; }
+    .ok{ color:var(--ok); } .ng{ color:var(--ng); } .warn{ color:var(--warn); }
+    .kbd{ display:inline-block; padding:2px 6px; border:1px solid rgba(255,255,255,.18); border-radius:6px; background:rgba(0,0,0,.18); font-size:12px; color:var(--text); }
+    .mini{ font-size:12px; color:var(--muted); }
+    .hr{ height:1px; background:rgba(255,255,255,.12); margin:12px 0; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    .explain{
+      margin-top:10px; padding:10px; border-radius:12px;
+      border:1px solid rgba(255,255,255,.12); background:rgba(0,0,0,.18);
+      display:none;
+    }
+    .explain h3{ margin:0 0 6px; font-size:13px; color:var(--text); }
+    .explain .line{ font-size:13px; line-height:1.6; color:var(--text); }
+
+    /* Always-on mnemonic panel */
+    .mnBox{
+      margin-top:10px; padding:10px; border-radius:12px;
+      border:1px solid rgba(122,167,255,.28);
+      background:rgba(122,167,255,.08);
+    }
+    .mnBox h3{ margin:0 0 6px; font-size:13px; }
+    .mnLine{ font-size:13px; line-height:1.6; }
+    .pill{
+      display:inline-block; padding:4px 10px; border-radius:999px;
+      background:rgba(0,0,0,.22); border:1px solid rgba(255,255,255,.14);
+      color:var(--muted); font-size:12px;
+    }
+
+    /* Paddle */
+    .paddleWrap{ display:grid; grid-template-columns: 1fr; gap:10px; margin-top:10px;}
+    .paddle{
+      height:170px; border-radius:16px;
+      border:1px solid rgba(122,167,255,.35);
+      background:linear-gradient(180deg, rgba(122,167,255,.16), rgba(255,255,255,.04));
+      display:flex; align-items:center; justify-content:center;
+      user-select:none; -webkit-user-select:none; touch-action: manipulation;
+      font-weight:900; letter-spacing:.5px;
+    }
+    .paddle:active{ filter:brightness(1.15); }
+  </style>
+</head>
+
+<body>
+<div class="wrap">
+  <h1>International Morse Trainer（初級・v3）</h1>
+
+  <div class="tabs">
+    <div class="tab active" data-tab="typing">1. タイピング練習（長押し判定）</div>
+    <div class="tab" data-tab="reading">2. 読み取り（モールス→4択）</div>
+    <div class="tab" data-tab="dictation">3. 書き取り（英語→モールス 4択）</div>
+    <div class="tab" data-tab="convert">4. 変換（英語→モールス）</div>
+  </div>
+
+  <div class="grid">
+    <div class="card" id="mainCard"></div>
+
+    <div class="card">
+      <div class="row" style="justify-content:space-between; align-items:flex-end;">
+        <div style="min-width:280px;">
+          <label>出題カテゴリ（読み取り・タイピング・書き取りに適用）</label><br/>
+          <select id="categorySelect">
+            <option value="letters">英字（A-Z）</option>
+            <option value="digits">数字（0-9）</option>
+            <option value="symbols">記号（.,?/'()!&:;=+-_"$@）</option>
+            <option value="words">よく使う単語（初級）</option>
+            <option value="mixed" selected>ミックス（英字/数字/記号/単語）</option>
+          </select>
+        </div>
+
+        <div style="min-width:240px;">
+          <label>タイピング：短押し/長押しの閾値</label><br/>
+          <select id="thresholdSelect">
+            <option value="180">180 ms（速め）</option>
+            <option value="240" selected>240 ms（標準）</option>
+            <option value="320">320 ms（ゆっくり）</option>
+          </select>
+        </div>
+
+        <div>
+          <button id="resetBtn">統計リセット</button>
+        </div>
+      </div>
+
+      <div class="stat">
+        <div class="box"><div class="k">正解数</div><div class="v" id="stCorrect">0</div></div>
+        <div class="box"><div class="k">不正解数</div><div class="v" id="stWrong">0</div></div>
+        <div class="box"><div class="k">正答率</div><div class="v" id="stRate">0%</div></div>
+        <div class="box"><div class="k">平均反応時間</div><div class="v" id="stAvg">-</div></div>
+      </div>
+
+      <div class="hr"></div>
+      <div class="hint">
+        タイピング練習：パドル <span class="kbd">短押し</span> →「.」 / <span class="kbd">長押し</span> →「-」<br/>
+        語呂合わせ（A-Z）は、各問題で <b>最初から表示</b> されます（ネタバレはしません）。
+      </div>
+
+      <div class="hr"></div>
+      <div class="mini mono" id="refBox"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const MORSE = {
+    A: ".-",    B: "-...",  C: "-.-.",  D: "-..",   E: ".",
+    F: "..-.",  G: "--.",   H: "....",  I: "..",    J: ".---",
+    K: "-.-",   L: ".-..",  M: "--",    N: "-.",    O: "---",
+    P: ".--.",  Q: "--.-",  R: ".-.",   S: "...",   T: "-",
+    U: "..-",   V: "...-",  W: ".--",   X: "-..-",  Y: "-.--",
+    Z: "--..",
+    0: "-----", 1: ".----", 2: "..---", 3: "...--", 4: "....-",
+    5: ".....", 6: "-....", 7: "--...", 8: "---..", 9: "----.",
+    ".": ".-.-.-", ",": "--..--", "?": "..--..", "'": ".----.",
+    "/": "-..-.", "(": "-.--.", ")": "-.--.-", "!": "-.-.--",
+    "&": ".-...", ":": "---...", ";": "-.-.-.", "=": "-...-",
+    "+": ".-.-.", "-": "-....-", "_": "..--.-", '"': ".-..-.",
+    "$": "...-..-", "@": ".--.-."
+  };
+
+  const MNEMONIC = {
+    A:"アレー", B:"ビートルズ", C:"チャートルーム", D:"道徳", E:"絵", F:"古道具", G:"強盗だ",
+    H:"ホノルル", I:"石", J:"自衛方法", K:"警視庁", L:"流浪する", M:"メーデー", N:"ノート",
+    O:"応急法", P:"プレーボール", Q:"救急至急", R:"利口だ", S:"進め", T:"ティー", U:"ユタ州",
+    V:"ヴィクトリー", W:"和洋風", X:"エークスレイ", Y:"養子孝行", Z:"ざあざあ雨"
+  };
+
+  const WORDS = [
+    "SOS","OK","YES","NO","HELP","CALL","CQ","TEST","HAM","RADIO","MORSE",
+    "HELLO","HI","BYE","THANKS","PLEASE","WAIT","GO","STOP","RUN","HOME",
+    "NAME","CODE","SIGN","TIME","DAY","NIGHT","GOOD","BAD","SAFE","FIRE","WATER",
+    "EMERGENCY","READY","START","END"
+  ];
+
+  const CATEGORIES = {
+    letters: Object.keys(MORSE).filter(k => /^[A-Z]$/.test(k)).sort(),
+    digits: Object.keys(MORSE).filter(k => /^[0-9]$/.test(k)).sort(),
+    symbols: Object.keys(MORSE).filter(k => !/^[A-Z0-9]$/.test(k)).sort(),
+    words: WORDS.slice(),
+  };
+
+  // Stats
+  const LS_KEY = "morse_trainer_stats_v3";
+  const stats = loadStats();
+  function loadStats(){
+    try{
+      const raw = localStorage.getItem(LS_KEY);
+      if(!raw) return { correct:0, wrong:0, rtSum:0, rtN:0 };
+      const o = JSON.parse(raw);
+      return { correct:o.correct||0, wrong:o.wrong||0, rtSum:o.rtSum||0, rtN:o.rtN||0 };
+    }catch{ return { correct:0, wrong:0, rtSum:0, rtN:0 }; }
+  }
+  function saveStats(){
+    localStorage.setItem(LS_KEY, JSON.stringify(stats));
+    renderStats();
+  }
+  function resetStats(){
+    stats.correct=0; stats.wrong=0; stats.rtSum=0; stats.rtN=0;
+    saveStats();
+  }
+
+  // Helpers
+  function nowMs(){ return performance.now(); }
+  function choice(arr){ return arr[Math.floor(Math.random()*arr.length)]; }
+  function shuffle(a){
+    const b = a.slice();
+    for(let i=b.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [b[i],b[j]]=[b[j],b[i]];
+    }
+    return b;
+  }
+  function uniqueChoices(correct, pool, n=4){
+    const set = new Set([correct]);
+    while(set.size < n) set.add(choice(pool));
+    return shuffle([...set]);
+  }
+  function toMorseText(text){
+    const words = text.toUpperCase().trim().split(/\s+/).filter(Boolean);
+    const outWords = words.map(w => [...w].map(ch => MORSE[ch]).filter(Boolean).join(" "));
+    return outWords.join(" / ");
+  }
+  function escapeHtml(s){
+    return String(s)
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#039;");
+  }
+  function labelOfCat(cat){
+    return ({letters:"英字",digits:"数字",symbols:"記号",words:"単語",mixed:"ミックス"})[cat] || cat;
+  }
+
+  // Always-on mnemonic builder (no answers shown)
+function buildMnemonicLinesFromText(text){
+  const letters = [...String(text).toUpperCase()].filter(ch => /^[A-Z]$/.test(ch));
+  const uniq = [...new Set(letters)];
+  if(!uniq.length) return ["（この問題は英字を含みません）"];
+
+  // アルファベットは表示しない（答えになり得るため）
+  // 語呂合わせの文言だけを出す
+  const phrases = uniq
+    .map(ch => MNEMONIC[ch])
+    .filter(Boolean);
+
+  if(!phrases.length) return ["（語呂合わせが登録されていません）"];
+
+  return phrases.map(p => `・${p}`);
+}
+
+  function showMnemonicBox(container, title, lines){
+    const html = `
+      <div class="mnBox">
+        <h3>${escapeHtml(title)}</h3>
+        ${lines.map(s => `<div class="mnLine">${escapeHtml(s)}</div>`).join("")}
+      </div>
+    `;
+    container.insertAdjacentHTML("beforeend", html);
+  }
+
+  function showExplain(el, title, lines){
+    el.style.display = "block";
+    el.innerHTML = `
+      <h3>${escapeHtml(title)}</h3>
+      ${lines.map(s => `<div class="line">${escapeHtml(s)}</div>`).join("")}
+    `;
+  }
+  function hideExplain(el){
+    el.style.display = "none";
+    el.innerHTML = "";
+  }
+  function setMessage(el, kind, text){
+    el.className = "msg " + kind;
+    el.textContent = text;
+  }
+
+  // UI
+  const tabs = [...document.querySelectorAll(".tab")];
+  const mainCard = document.getElementById("mainCard");
+  const categorySelect = document.getElementById("categorySelect");
+  const thresholdSelect = document.getElementById("thresholdSelect");
+  const resetBtn = document.getElementById("resetBtn");
+  const refBox = document.getElementById("refBox");
+
+  const stCorrect = document.getElementById("stCorrect");
+  const stWrong = document.getElementById("stWrong");
+  const stRate = document.getElementById("stRate");
+  const stAvg = document.getElementById("stAvg");
+
+  function renderStats(){
+    stCorrect.textContent = stats.correct;
+    stWrong.textContent = stats.wrong;
+    const total = stats.correct + stats.wrong;
+    stRate.textContent = total ? Math.round((stats.correct/total)*100) + "%" : "0%";
+    stAvg.textContent = stats.rtN ? Math.round(stats.rtSum / stats.rtN) + " ms" : "-";
+  }
+
+  function renderReference(){
+    const cat = categorySelect.value;
+    if(cat === "mixed"){
+      refBox.textContent = "参照：ミックス（英字/数字/記号/単語）";
+      return;
+    }
+    if(cat === "words"){
+      refBox.textContent = `参照（単語例）：${WORDS.slice(0,18).join(", ")}${WORDS.length>18?" ...":""}`;
+      return;
+    }
+    const pool = CATEGORIES[cat];
+    refBox.textContent = `参照（${labelOfCat(cat)}）:  ` + pool.map(k => `${k}:${MORSE[k]}`).join("  |  ");
+  }
+
+  // Pools
+  function getCategoryPicker(){
+    const cat = categorySelect.value;
+    if(cat === "mixed"){
+      return () => {
+        const r = Math.random();
+        if(r < 0.50) return {cat:"letters", item: choice(CATEGORIES.letters)};
+        if(r < 0.65) return {cat:"digits", item: choice(CATEGORIES.digits)};
+        if(r < 0.80) return {cat:"symbols", item: choice(CATEGORIES.symbols)};
+        return {cat:"words", item: choice(CATEGORIES.words)};
+      };
+    }
+    return () => ({cat, item: choice(CATEGORIES[cat])});
+  }
+
+  // Tabs
+  let activeTab = "typing";
+  function mount(tab){
+    activeTab = tab;
+    tabs.forEach(t => t.classList.toggle("active", t.dataset.tab === tab));
+    renderReference();
+    if(tab === "typing") mountTyping();
+    else if(tab === "reading") mountReading();
+    else if(tab === "dictation") mountDictation();
+    else if(tab === "convert") mountConvert();
+  }
+  tabs.forEach(t => t.onclick = () => mount(t.dataset.tab));
+  categorySelect.onchange = () => mount(activeTab);
+  thresholdSelect.onchange = () => mount(activeTab);
+  resetBtn.onclick = () => resetStats();
+
+  // 1) Typing
+  let typingBuffer = "", typingTarget = null, typingMorse = "", typingStart = 0, pressDownAt = null, lockedTyping = false;
+
+  function mountTyping(){
+    const pick = getCategoryPicker();
+    const p = pick();
+    if(p.cat === "words"){
+      typingTarget = p.item.toUpperCase();
+      typingMorse = toMorseText(typingTarget);
+    } else {
+      typingTarget = p.item;
+      typingMorse = MORSE[typingTarget];
+    }
+    typingBuffer = "";
+    typingStart = nowMs();
+    lockedTyping = false;
+    pressDownAt = null;
+
+    mainCard.innerHTML = `
+      <div class="row" style="justify-content:space-between; align-items:flex-start;">
+        <div>
+          <div class="mini">指定された内容をモールスで入力（短押し「.」/長押し「-」）</div>
+          <div class="big mono">${escapeHtml(typingTarget)}</div>
+          <div class="row" style="margin-top:6px;">
+            <span class="pill">カテゴリ：${escapeHtml(labelOfCat(categorySelect.value))}</span>
+            <span class="pill">閾値：${escapeHtml(thresholdSelect.value)} ms</span>
+          </div>
+        </div>
+        <div class="row">
+          <button id="tpClear">クリア</button>
+          <button class="primary" id="tpNext">次の問題</button>
+        </div>
+      </div>
+
+      <div class="paddleWrap">
+        <div class="paddle" id="paddle">パドル（押す）</div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="mini">あなたの入力</div>
+      <div class="morse mono" id="tpBuf">(empty)</div>
+      <div class="msg" id="tpMsg"></div>
+
+      <div class="explain" id="tpExplain"></div>
+    `;
+
+    // ここで「語呂合わせ」を最初から表示（ネタバレ無し）
+    showMnemonicBox(mainCard, "語呂合わせ（A-Z）", buildMnemonicLinesFromText(typingTarget));
+
+    const tpBuf = document.getElementById("tpBuf");
+    const tpMsg = document.getElementById("tpMsg");
+    const tpExplain = document.getElementById("tpExplain");
+    const paddle = document.getElementById("paddle");
+
+    function renderBuf(){ tpBuf.textContent = typingBuffer.length ? typingBuffer : "(empty)"; }
+    function normalizeMorse(s){ return String(s).replaceAll(" ", "").replaceAll("/", ""); }
+
+    function explainLines(){
+      const lines = [];
+      lines.push(`正解：${typingTarget} = ${typingMorse}`);
+      lines.push(`あなたの入力：${typingBuffer || "(empty)"}`);
+      return lines;
+    }
+
+    function markWrong(reason){
+      if(lockedTyping) return;
+      lockedTyping = true;
+      const rt = Math.round(nowMs() - typingStart);
+      stats.wrong++; saveStats();
+      setMessage(tpMsg, "ng", `不正解（${rt} ms） ${reason || ""}`.trim());
+      showExplain(tpExplain, "解説", explainLines());
+    }
+    function markCorrect(){
+      if(lockedTyping) return;
+      lockedTyping = true;
+      const rt = Math.round(nowMs() - typingStart);
+      stats.correct++; stats.rtSum += rt; stats.rtN++; saveStats();
+      setMessage(tpMsg, "ok", `正解（${rt} ms） 次の問題へ`);
+      showExplain(tpExplain, "解説", explainLines());
+      setTimeout(() => mountTyping(), 600);
+    }
+
+    function appendSymbol(sym){
+      if(lockedTyping) return;
+      hideExplain(tpExplain);
+      typingBuffer += sym;
+      renderBuf();
+
+      const expected = normalizeMorse(typingMorse);
+      const current = normalizeMorse(typingBuffer);
+
+      if(!expected.startsWith(current)){
+        markWrong("入力が正解の途中経過と一致しません");
+        return;
+      }
+      if(current === expected){
+        markCorrect();
+      }
+    }
+
+    const thresholdMs = Number(thresholdSelect.value);
+
+    function onDown(e){
+      if(lockedTyping) return;
+      pressDownAt = nowMs();
+      e.preventDefault?.();
+    }
+    function onUp(e){
+      if(lockedTyping) return;
+      if(pressDownAt == null) return;
+      const dur = Math.round(nowMs() - pressDownAt);
+      pressDownAt = null;
+      const sym = (dur < thresholdMs) ? "." : "-";
+      setMessage(tpMsg, "warn", `${sym}（押下 ${dur} ms）`);
+      appendSymbol(sym);
+      e.preventDefault?.();
+    }
+
+    paddle.addEventListener("mousedown", onDown);
+    window.addEventListener("mouseup", onUp);
+    paddle.addEventListener("touchstart", onDown, {passive:false});
+    paddle.addEventListener("touchend", onUp, {passive:false});
+
+    document.getElementById("tpClear").onclick = () => {
+      if(lockedTyping) return;
+      typingBuffer = "";
+      renderBuf();
+      setMessage(tpMsg, "warn", "クリアしました");
+      hideExplain(tpExplain);
+      typingStart = nowMs();
+    };
+    document.getElementById("tpNext").onclick = () => mountTyping();
+
+    renderBuf();
+  }
+
+  // 2) Reading
+  function mountReading(){
+    const pick = getCategoryPicker();
+    const p = pick();
+
+    let promptMorse = "", correct = "", options = [], modeCat = p.cat;
+    if(modeCat === "words"){
+      correct = p.item.toUpperCase();
+      promptMorse = toMorseText(correct);
+      options = uniqueChoices(correct, CATEGORIES.words, 4);
+    } else {
+      correct = p.item;
+      promptMorse = MORSE[correct];
+      options = uniqueChoices(correct, CATEGORIES[modeCat], 4);
+    }
+
+    const start = nowMs();
+
+    mainCard.innerHTML = `
+      <div class="mini">表示されたモールスの意味を4択で選んでください</div>
+      <div class="row" style="margin-top:6px;">
+        <span class="pill">カテゴリ：${escapeHtml(labelOfCat(modeCat))}</span>
+      </div>
+      <div class="morse mono">${escapeHtml(promptMorse)}</div>
+
+      <div class="choices" id="rdChoices"></div>
+      <div class="msg" id="rdMsg"></div>
+      <div class="explain" id="rdExplain"></div>
+
+      <div class="row" style="justify-content:flex-end; margin-top:10px;">
+        <button class="primary" id="rdNext">次の問題</button>
+      </div>
+    `;
+
+    // 語呂合わせを最初から表示（英字が含まれれば表示される）
+    showMnemonicBox(mainCard, "語呂合わせ（A-Z）", buildMnemonicLinesFromText(correct));
+
+    const box = document.getElementById("rdChoices");
+    const rdMsg = document.getElementById("rdMsg");
+    const rdExplain = document.getElementById("rdExplain");
+    let locked = false;
+
+    function explainLines(){
+      const lines = [];
+      lines.push(`正解：${correct} = ${promptMorse}`);
+      return lines;
+    }
+
+    options.forEach(ch => {
+      const b = document.createElement("button");
+      b.className = "choice mono";
+      b.textContent = ch;
+      b.onclick = () => {
+        if(locked) return;
+        locked = true;
+        const rt = Math.round(nowMs() - start);
+        if(ch === correct){
+          b.classList.add("correct");
+          stats.correct++; stats.rtSum += rt; stats.rtN++; saveStats();
+          setMessage(rdMsg, "ok", `正解（${rt} ms）`);
+        }else{
+          b.classList.add("wrong");
+          stats.wrong++; saveStats();
+          setMessage(rdMsg, "ng", `不正解（${rt} ms）`);
+          [...box.querySelectorAll("button")].forEach(x => {
+            if(x.textContent === correct) x.classList.add("correct");
+          });
+        }
+        showExplain(rdExplain, "解説", explainLines());
+      };
+      box.appendChild(b);
+    });
+
+    document.getElementById("rdNext").onclick = () => mountReading();
+  }
+
+  // 3) Dictation
+  function mountDictation(){
+    const cat = categorySelect.value;
+
+    let prompt = "";
+    if(cat === "words" || cat === "mixed"){
+      prompt = choice(WORDS);
+    }else if(cat === "letters"){
+      prompt = Array.from({length: 4}, () => choice(CATEGORIES.letters)).join("");
+    }else if(cat === "digits"){
+      prompt = Array.from({length: 4}, () => choice(CATEGORIES.digits)).join("");
+    }else if(cat === "symbols"){
+      const symPool = CATEGORIES.symbols;
+      prompt = Array.from({length: 3}, () => choice(symPool)).join("");
+    }else{
+      prompt = choice(WORDS);
+    }
+
+    const correctMorse = toMorseText(prompt);
+
+    const options = [correctMorse];
+    const makeRandomPrompt = () => {
+      if(cat === "words" || cat === "mixed") return choice(WORDS);
+      if(cat === "letters") return Array.from({length: prompt.length}, () => choice(CATEGORIES.letters)).join("");
+      if(cat === "digits") return Array.from({length: prompt.length}, () => choice(CATEGORIES.digits)).join("");
+      if(cat === "symbols") return Array.from({length: prompt.length}, () => choice(CATEGORIES.symbols)).join("");
+      return choice(WORDS);
+    };
+
+    for(let i=0; i<30 && options.length<4; i++){
+      const p = makeRandomPrompt();
+      const m = toMorseText(p);
+      if(m && !options.includes(m)) options.push(m);
+    }
+    while(options.length<4){
+      const p = makeRandomPrompt();
+      const m = toMorseText(p);
+      if(m && !options.includes(m)) options.push(m);
+    }
+
+    const shuffled = shuffle(options);
+    const start = nowMs();
+
+    mainCard.innerHTML = `
+      <div class="mini">表示された英語（文字列）をモールスにしたものを4択で選んでください</div>
+      <div class="row" style="margin-top:6px;">
+        <span class="pill">カテゴリ：${escapeHtml(labelOfCat(cat))}</span>
+      </div>
+      <div class="big mono">${escapeHtml(prompt)}</div>
+
+      <div class="choices" id="dcChoices"></div>
+      <div class="msg" id="dcMsg"></div>
+      <div class="explain" id="dcExplain"></div>
+
+      <div class="row" style="justify-content:flex-end; margin-top:10px;">
+        <button class="primary" id="dcNext">次の問題</button>
+      </div>
+    `;
+
+    // 語呂合わせを最初から表示（prompt中の英字分）
+    showMnemonicBox(mainCard, "語呂合わせ（A-Z）", buildMnemonicLinesFromText(prompt));
+
+    const box = document.getElementById("dcChoices");
+    const dcMsg = document.getElementById("dcMsg");
+    const dcExplain = document.getElementById("dcExplain");
+    let locked = false;
+
+    function explainLines(){
+      const lines = [];
+      lines.push(`正解：${prompt} = ${correctMorse}`);
+      return lines;
+    }
+
+    shuffled.forEach(m => {
+      const b = document.createElement("button");
+      b.className = "choice mono";
+      b.textContent = m;
+      b.onclick = () => {
+        if(locked) return;
+        locked = true;
+        const rt = Math.round(nowMs() - start);
+
+        if(m === correctMorse){
+          b.classList.add("correct");
+          stats.correct++; stats.rtSum += rt; stats.rtN++; saveStats();
+          setMessage(dcMsg, "ok", `正解（${rt} ms）`);
+        }else{
+          b.classList.add("wrong");
+          stats.wrong++; saveStats();
+          setMessage(dcMsg, "ng", `不正解（${rt} ms）`);
+          [...box.querySelectorAll("button")].forEach(x => {
+            if(x.textContent === correctMorse) x.classList.add("correct");
+          });
+        }
+        showExplain(dcExplain, "解説", explainLines());
+      };
+      box.appendChild(b);
+    });
+
+    document.getElementById("dcNext").onclick = () => mountDictation();
+  }
+
+  // 4) Convert
+  function mountConvert(){
+    mainCard.innerHTML = `
+      <div class="mini">英語・数字・記号を国際モールスに変換します。単語区切りは「 / 」で表現します。</div>
+      <div class="hr"></div>
+
+      <label>入力（A-Z, 0-9, 記号 .,?/'()!&:;=+-_"$@ とスペース）</label>
+      <input id="cvIn" type="text" placeholder='例: HELLO WORLD 2025! @OPENAI' style="width:100%; margin-top:6px;" />
+
+      <div class="row" style="margin-top:10px; justify-content:flex-end;">
+        <button class="primary" id="cvBtn">変換</button>
+        <button id="cvCopy">結果をコピー</button>
+      </div>
+
+      <div class="hr"></div>
+      <label>変換結果（モールス）</label>
+      <textarea id="cvOut" class="mono" readonly></textarea>
+
+      <div class="msg" id="cvMsg"></div>
+      <div class="explain" id="cvExplain"></div>
+    `;
+
+    const cvIn = document.getElementById("cvIn");
+    const cvOut = document.getElementById("cvOut");
+    const cvMsg = document.getElementById("cvMsg");
+    const cvExplain = document.getElementById("cvExplain");
+
+    // 変換モードは入力が空の間は「語呂合わせ」なし（入力後に即表示：ネタバレではないため）
+    const mnHost = document.createElement("div");
+    mainCard.appendChild(mnHost);
+
+    function renderMnemonicForConvert(){
+      mnHost.innerHTML = "";
+      showMnemonicBox(mnHost, "語呂合わせ（A-Z）", buildMnemonicLinesFromText(cvIn.value || ""));
+    }
+
+    function convert(){
+      const raw = cvIn.value || "";
+      const converted = toMorseText(raw);
+      cvOut.value = converted;
+
+      renderMnemonicForConvert(); // 語呂合わせは常時（入力に応じて）
+
+      if(converted.length){
+        setMessage(cvMsg, "ok", "変換しました");
+        hideExplain(cvExplain);
+      }else{
+        setMessage(cvMsg, "ng", "変換できる文字がありません（対応文字のみ）");
+        hideExplain(cvExplain);
+      }
+    }
+
+    document.getElementById("cvBtn").onclick = convert;
+    document.getElementById("cvCopy").onclick = async () => {
+      try{
+        await navigator.clipboard.writeText(cvOut.value || "");
+        setMessage(cvMsg, "ok", "コピーしました");
+      }catch{
+        setMessage(cvMsg, "ng", "コピーに失敗しました（ブラウザ権限の可能性）");
+      }
+    };
+
+    cvIn.addEventListener("input", renderMnemonicForConvert);
+    renderMnemonicForConvert();
+  }
+
+  // init
+  renderStats();
+  renderReference();
+  mount("typing");
+})();
+</script>
+</body>
+</html>
